@@ -6,7 +6,9 @@ import {
   TouchableOpacity,
   Dimensions,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
+import { WebView } from 'react-native-webview';
 import { Video } from 'expo-av';
 import { FontAwesome, Ionicons } from '@expo/vector-icons';
 import apiService from '../servicios/api';
@@ -22,14 +24,13 @@ const VideoItem = ({ item, onComentariosPress }) => {
   const [isLiked, setIsLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(item.likeCount || 0);
   const [deviceId, setDeviceId] = useState(null);
-
-  // Obtener el ID del dispositivo al cargar el componente
+  const [useWebView, setUseWebView] = useState(true); // Mantener WebView como predeterminado
+  
   useEffect(() => {
     const obtenerDispositivo = async () => {
       const id = await dispositivo.obtenerIdDispositivo();
       setDeviceId(id);
       
-      // Verificar si el usuario ya dio like al video
       if (id && item._id) {
         try {
           const tienelike = await apiService.likes.verificarLike(item._id, id);
@@ -43,21 +44,30 @@ const VideoItem = ({ item, onComentariosPress }) => {
     obtenerDispositivo();
   }, [item._id]);
 
-  // Manejar el estado de reproducción del video
   const handlePlayPause = async () => {
+    if (useWebView) return;
+    
     if (videoRef.current) {
-      if (isPlaying) {
-        await videoRef.current.pauseAsync();
-      } else {
-        await videoRef.current.playAsync();
+      try {
+        if (isPlaying) {
+          await videoRef.current.pauseAsync();
+        } else {
+          await videoRef.current.playAsync();
+        }
+        setIsPlaying(!isPlaying);
+      } catch (error) {
+        console.error('Error al reproducir/pausar video:', error);
+        setUseWebView(true);
+        setIsLoading(false);
       }
-      setIsPlaying(!isPlaying);
     }
   };
 
-  // Manejar la acción de like
   const handleLike = async () => {
-    if (!deviceId) return;
+    if (!deviceId) {
+      Alert.alert('Error', 'No se pudo identificar el dispositivo');
+      return;
+    }
     
     try {
       if (isLiked) {
@@ -70,47 +80,105 @@ const VideoItem = ({ item, onComentariosPress }) => {
       setIsLiked(!isLiked);
     } catch (error) {
       console.error('Error al dar/quitar like:', error);
+      Alert.alert('Error', 'No se pudo procesar tu acción');
     }
   };
 
+  const handleLoadStart = () => {
+    setIsLoading(true);
+  };
+
+  const handleLoad = () => {
+    setIsLoading(false);
+  };
+
+  // HTML del reproductor de Cloudflare (sin cambios)
+  const embedHtml = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+      <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body { width: 100%; height: 100%; overflow: hidden; background-color: #000; }
+        .container { width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; }
+        iframe { width: 100%; height: 100%; border: none; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <iframe 
+          src="https://customer-7ifm1m1zqw3oxnjj.cloudflarestream.com/${item.cloudflareId}/iframe" 
+          allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture"
+          allowfullscreen>
+        </iframe>
+      </div>
+    </body>
+    </html>
+  `;
+
   return (
     <View style={styles.container}>
-      <TouchableOpacity
-        activeOpacity={0.8}
-        onPress={handlePlayPause}
-        style={styles.videoContainer}
-      >
-        <Video
-          ref={videoRef}
-          source={{ uri: item.cloudflareUrl }}
-          style={styles.video}
-          resizeMode="cover"
-          isLooping
-          shouldPlay={false}
-          onPlaybackStatusUpdate={(status) => {
-            if (status.isLoaded && isLoading) {
-              setIsLoading(false);
-            }
-            if (status.isPlaying !== isPlaying) {
-              setIsPlaying(status.isPlaying);
-            }
-          }}
-          useNativeControls={false}
-        />
-        
-        {isLoading && (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#FFFFFF" />
-          </View>
+      <View style={styles.videoContainer}>
+        {useWebView ? (
+          <WebView
+            source={{ html: embedHtml }}
+            style={styles.video}
+            javaScriptEnabled={true}
+            allowsInlineMediaPlayback={true}
+            mediaPlaybackRequiresUserAction={false}
+            startInLoadingState={true}
+            onLoadStart={handleLoadStart}
+            onLoad={handleLoad}
+            onError={(e) => console.error('Error en WebView:', e.nativeEvent)}
+            renderLoading={() => (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color="#FFFFFF" />
+                <Text style={styles.loadingText}>Cargando reproductor...</Text>
+              </View>
+            )}
+          />
+        ) : (
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={handlePlayPause}
+            style={styles.touchableVideo}
+          >
+            <Video
+              ref={videoRef}
+              source={{ uri: item.cloudflareUrl }}
+              style={styles.video}
+              resizeMode="cover"
+              isLooping
+              shouldPlay={false}
+              onPlaybackStatusUpdate={(status) => {
+                if (status.isLoaded && isLoading) {
+                  setIsLoading(false);
+                }
+                if (status.isPlaying !== isPlaying) {
+                  setIsPlaying(status.isPlaying);
+                }
+              }}
+              useNativeControls={false}
+            />
+            
+            {isLoading && !useWebView && (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color="#FFFFFF" />
+                <Text style={styles.loadingText}>Cargando video...</Text>
+              </View>
+            )}
+            
+            {!isPlaying && !isLoading && !useWebView && (
+              <View style={styles.playButtonContainer}>
+                <FontAwesome name="play" size={50} color="#FFFFFF" />
+              </View>
+            )}
+          </TouchableOpacity>
         )}
-        
-        {!isPlaying && !isLoading && (
-          <View style={styles.playButtonContainer}>
-            <FontAwesome name="play" size={50} color="#FFFFFF" />
-          </View>
-        )}
-      </TouchableOpacity>
+      </View>
       
+      {/* Barra de app elevada para no tapar controles del reproductor */}
       <View style={styles.controls}>
         <View style={styles.infoContainer}>
           <Text style={styles.title} numberOfLines={1}>
@@ -125,6 +193,7 @@ const VideoItem = ({ item, onComentariosPress }) => {
           <TouchableOpacity
             style={styles.actionButton}
             onPress={handleLike}
+            disabled={!deviceId}
           >
             <Ionicons
               name={isLiked ? 'heart' : 'heart-outline'}
@@ -150,14 +219,17 @@ const VideoItem = ({ item, onComentariosPress }) => {
 const styles = StyleSheet.create({
   container: {
     width: width,
-    height: height - 130, // Ajustar según el diseño de la app (barra de navegación, etc.)
+    height: height - 130,
     backgroundColor: '#000',
   },
   videoContainer: {
     flex: 1,
+    backgroundColor: '#000',
+  },
+  touchableVideo: {
+    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#000',
   },
   video: {
     width: '100%',
@@ -169,21 +241,29 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
+  loadingText: {
+    color: '#FFFFFF',
+    marginTop: 10,
+    fontSize: 14,
+    textAlign: 'center',
+  },
   playButtonContainer: {
     ...StyleSheet.absoluteFillObject,
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: 'rgba(0, 0, 0, 0.3)',
   },
+  // Única modificación importante: subir la barra de controles
   controls: {
     position: 'absolute',
-    bottom: 0,
+    bottom: 75, // Elevado para no tapar los controles nativos del reproductor
     left: 0,
     right: 0,
     flexDirection: 'row',
     alignItems: 'flex-end',
     justifyContent: 'space-between',
     padding: 16,
+    paddingBottom: 10,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
   infoContainer: {
@@ -212,7 +292,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 14,
     marginTop: 4,
-  },
+  }
 });
 
 export default VideoItem;

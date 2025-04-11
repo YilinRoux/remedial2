@@ -30,7 +30,7 @@ const ComentariosScreen = ({ route, navigation }) => {
   const inputRef = useRef(null);
   const flatListRef = useRef(null);
 
-  // Obtener el ID del dispositivo al cargar la pantalla
+  
   useEffect(() => {
     const obtenerDispositivo = async () => {
       const id = await dispositivo.obtenerIdDispositivo();
@@ -40,12 +40,12 @@ const ComentariosScreen = ({ route, navigation }) => {
     obtenerDispositivo();
   }, []);
 
-  // Cargar comentarios al iniciar
+  
   useEffect(() => {
     cargarComentarios();
   }, [videoId, currentPage]);
 
-  // Función para cargar los comentarios
+  
   const cargarComentarios = async (refresh = false) => {
     try {
       if (refresh) {
@@ -77,7 +77,7 @@ const ComentariosScreen = ({ route, navigation }) => {
     }
   };
 
-  // Manejar el envío de un nuevo comentario
+  
   const enviarComentario = async () => {
     if (!nuevoComentario.trim() || !deviceId) return;
     
@@ -90,10 +90,9 @@ const ComentariosScreen = ({ route, navigation }) => {
         nuevoComentario.trim()
       );
       
-      // Limpiar el campo de texto
+    
       setNuevoComentario('');
       
-      // Recargar los comentarios para mostrar el nuevo
       cargarComentarios(true);
     } catch (error) {
       console.error('Error al enviar comentario:', error);
@@ -103,14 +102,14 @@ const ComentariosScreen = ({ route, navigation }) => {
     }
   };
 
-  // Manejar la eliminación de un comentario
+  
   const eliminarComentario = async (comentarioId) => {
     if (!deviceId) return;
     
     try {
       await apiService.comentarios.eliminarComentario(comentarioId, deviceId);
       
-      // Actualizar la lista de comentarios
+     
       setComentarios((prevComentarios) =>
         prevComentarios.filter((c) => c._id !== comentarioId)
       );
@@ -120,14 +119,14 @@ const ComentariosScreen = ({ route, navigation }) => {
     }
   };
 
-  // Manejar la carga de más comentarios al llegar al final de la lista
+  
   const handleEndReached = () => {
     if (!isLoading && !isRefreshing && currentPage < totalPages) {
       setCurrentPage((prevPage) => prevPage + 1);
     }
   };
 
-  // Renderizar cada comentario en la lista
+
   const renderItem = ({ item }) => (
     <ComentarioItem
       comentario={item}
@@ -136,7 +135,7 @@ const ComentariosScreen = ({ route, navigation }) => {
     />
   );
 
-  // Renderizar un indicador de carga al final de la lista si hay más páginas
+
   const renderFooter = () => {
     if (!isLoading || isRefreshing) return null;
     
@@ -147,7 +146,7 @@ const ComentariosScreen = ({ route, navigation }) => {
     );
   };
 
-  // Renderizar un mensaje si no hay comentarios
+  
   const renderEmptyComponent = () => {
     if (isLoading) return null;
     

@@ -21,24 +21,23 @@ const FeedScreen = ({ navigation }) => {
   const [totalPages, setTotalPages] = useState(1);
   const [error, setError] = useState(null);
   
-  // Referencia para la FlatList
+
   const flatListRef = useRef(null);
 
-  // Cargar videos al iniciar y cuando cambia la página
   useEffect(() => {
     cargarVideos();
   }, [currentPage]);
 
-  // Función para cargar los videos desde la API
+
   const cargarVideos = async (refresh = false) => {
     try {
       if (refresh) {
         setIsRefreshing(true);
         setCurrentPage(1);
       } else if (isLoading === false && refresh === false) {
-        // Si estamos cargando más páginas (no refresh ni carga inicial)
+       
         if (currentPage > totalPages) {
-          return; // No hay más páginas para cargar
+          return; 
         }
       }
 
@@ -63,24 +62,22 @@ const FeedScreen = ({ navigation }) => {
     }
   };
 
-  // Manejar el refresco (pull-to-refresh)
+
   const handleRefresh = () => {
     cargarVideos(true);
   };
 
-  // Manejar la carga de más videos al llegar al final de la lista
+ 
   const handleEndReached = () => {
     if (!isLoading && currentPage < totalPages) {
       setCurrentPage((prevPage) => prevPage + 1);
     }
   };
 
-  // Manejar la pulsación del botón de comentarios
   const handleComentariosPress = (video) => {
     navigation.navigate('Comentarios', { videoId: video._id });
   };
 
-  // Renderizar cada video en la lista
   const renderItem = ({ item, index }) => (
     <VideoItem
       item={item}
@@ -88,7 +85,6 @@ const FeedScreen = ({ navigation }) => {
     />
   );
 
-  // Renderizar un indicador de carga al final de la lista si hay más páginas
   const renderFooter = () => {
     if (!isLoading || isRefreshing) return null;
     
@@ -99,7 +95,6 @@ const FeedScreen = ({ navigation }) => {
     );
   };
 
-  // Renderizar un mensaje si no hay videos
   const renderEmptyComponent = () => {
     if (isLoading) return null;
     
@@ -115,7 +110,6 @@ const FeedScreen = ({ navigation }) => {
     );
   };
 
-  // Renderizar un mensaje de error si hay problemas al cargar
   if (error && !isRefreshing && !isLoading) {
     return (
       <View style={styles.errorContainer}>

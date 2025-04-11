@@ -28,7 +28,7 @@ const SubirScreen = ({ navigation }) => {
   const [deviceId, setDeviceId] = useState(null);
   const [videoInfo, setVideoInfo] = useState(null);
 
-  // Obtener el ID del dispositivo al cargar la pantalla
+ 
   useEffect(() => {
     const obtenerDispositivo = async () => {
       const id = await dispositivo.obtenerIdDispositivo();
@@ -38,10 +38,10 @@ const SubirScreen = ({ navigation }) => {
     obtenerDispositivo();
   }, []);
 
-  // Función para seleccionar un video de la galería
+
   const seleccionarVideo = async () => {
     try {
-      // Solicitar permiso para acceder a la galería
+  
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       
       if (status !== 'granted') {
@@ -52,7 +52,7 @@ const SubirScreen = ({ navigation }) => {
         return;
       }
       
-      // Abrir selector de medios
+      
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Videos,
         allowsEditing: true,
@@ -63,7 +63,7 @@ const SubirScreen = ({ navigation }) => {
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const selectedVideo = result.assets[0];
         
-        // Verificar si es un video vertical (altura > ancho)
+      
         const { width, height } = selectedVideo;
         if (width > height) {
           Alert.alert(
@@ -74,9 +74,9 @@ const SubirScreen = ({ navigation }) => {
           return;
         }
         
-        // Verificar el tamaño del archivo (máximo 50MB)
+
         const fileInfo = await FileSystem.getInfoAsync(selectedVideo.uri);
-        if (fileInfo.size > 52428800) { // 50MB en bytes
+        if (fileInfo.size > 52428800) { 
           Alert.alert(
             'Video demasiado grande',
             'El tamaño máximo permitido es 50MB.',
@@ -85,10 +85,7 @@ const SubirScreen = ({ navigation }) => {
           return;
         }
         
-        // Verificar la duración (máximo 60 segundos)
-        // Nota: ImagePicker ya filtra por duración, pero es bueno tener una verificación adicional
         
-        // Guardar la información del video seleccionado
         setVideoUri(selectedVideo.uri);
         setVideoInfo({
           width: selectedVideo.width,
@@ -97,7 +94,7 @@ const SubirScreen = ({ navigation }) => {
           size: fileInfo.size,
         });
         
-        // Generar miniatura
+      
         generarMiniatura(selectedVideo.uri);
       }
     } catch (error) {
@@ -106,22 +103,22 @@ const SubirScreen = ({ navigation }) => {
     }
   };
 
-  // Función para generar una miniatura del video
+  
   const generarMiniatura = async (uri) => {
     try {
       const { uri: thumbnail } = await VideoThumbnails.getThumbnailAsync(uri, {
-        time: 1000, // Tomar miniatura al segundo 1
+        time: 1000, 
         quality: 0.7,
       });
       
       setThumbnailUri(thumbnail);
     } catch (error) {
       console.error('Error al generar miniatura:', error);
-      // No mostrar error al usuario, simplemente no habrá miniatura
+      
     }
   };
 
-  // Función para subir el video
+ 
   const subirVideo = async () => {
     if (!videoUri || !deviceId) {
       Alert.alert('Error', 'Selecciona un video para subir.');
@@ -148,13 +145,12 @@ const SubirScreen = ({ navigation }) => {
         })
         .subirVideo(videoUri, deviceId, title);
       
-      // Limpiar el formulario después de subir correctamente
+
       setVideoUri(null);
       setThumbnailUri(null);
       setTitle('');
       setVideoInfo(null);
       
-      // Mostrar mensaje de éxito
       Alert.alert(
         '¡Video subido!',
         'Tu video se ha subido correctamente.',
@@ -180,7 +176,6 @@ const SubirScreen = ({ navigation }) => {
   return (
     <ScrollView style={styles.container}>
       <View style={styles.content}>
-        {/* Área de selección o vista previa del video */}
         {!videoUri ? (
           <TouchableOpacity
             style={styles.selectButton}
@@ -236,7 +231,7 @@ const SubirScreen = ({ navigation }) => {
           </View>
         )}
         
-        {/* Campo de título */}
+   
         <TextInput
           style={styles.input}
           placeholder="Título (opcional)"
@@ -246,7 +241,7 @@ const SubirScreen = ({ navigation }) => {
           placeholderTextColor="#999"
         />
         
-        {/* Botón de subir */}
+
         <TouchableOpacity
           style={[
             styles.uploadButton,
@@ -260,13 +255,13 @@ const SubirScreen = ({ navigation }) => {
           </Text>
         </TouchableOpacity>
         
-        {/* Información adicional */}
+       
         <Text style={styles.disclaimer}>
           Al subir este video, aceptas que cumple con nuestras normas de comunidad.
         </Text>
       </View>
       
-      {/* Modal de progreso de subida */}
+    
       <ProgresoSubida
         visible={isUploading}
         progreso={uploadProgress}

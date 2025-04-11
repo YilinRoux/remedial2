@@ -2,10 +2,8 @@ import axios from 'axios';
 import Constants from 'expo-constants';
 import * as FileSystem from 'expo-file-system';
 
-// Obtener la URL base de la API desde las configuraciones de la app
-const API_URL = Constants.expoConfig.extra.apiUrl || 'https://lavacalola.club/api';
 
-// Crear una instancia de axios con la configuración base
+const API_URL = Constants.expoConfig.extra.apiUrl || 'http://192.34.61.11/api';
 const api = axios.create({
   baseURL: API_URL,
   headers: {
@@ -13,11 +11,11 @@ const api = axios.create({
   },
 });
 
-// Servicio para manejar las peticiones a la API
+
 const apiService = {
-  // Servicios para videos
+  
   videos: {
-    // Obtener lista de videos para el feed
+    
     obtenerVideos: async (page = 1, limit = 10) => {
       try {
         const response = await api.get(`/videos?page=${page}&limit=${limit}`);
@@ -28,7 +26,7 @@ const apiService = {
       }
     },
     
-    // Obtener un video específico por ID
+   
     obtenerVideoPorId: async (id) => {
       try {
         const response = await api.get(`/videos/${id}`);
@@ -39,55 +37,100 @@ const apiService = {
       }
     },
     
-    // Subir un nuevo video
+    
     subirVideo: async (videoUri, deviceId, title = '') => {
       try {
-        // Crear un FormData para enviar el archivo
+        console.log(`Iniciando subida de video: ${videoUri}`);
+        console.log(`Device ID: ${deviceId}`);
+   
+        const fileInfo = await FileSystem.getInfoAsync(videoUri);
+        console.log(`Tamaño del archivo: ${fileInfo.size} bytes`);
+
         const formData = new FormData();
+
+        const uriParts = videoUri.split('.');
+        const fileExtension = uriParts[uriParts.length - 1];
+        const fileName = `video.${fileExtension}`;
+
+        let fileType;
+        switch (fileExtension.toLowerCase()) {
+          case 'mov':
+            fileType = 'video/quicktime';
+            break;
+          case 'mp4':
+            fileType = 'video/mp4';
+            break;
+          case 'avi':
+            fileType = 'video/x-msvideo';
+            break;
+          case 'wmv':
+            fileType = 'video/x-ms-wmv';
+            break;
+          default:
+            fileType = `video/${fileExtension}`;
+        }
         
-        // Obtener la extensión del archivo
-        const fileExtension = videoUri.split('.').pop();
-        
-        // Agregar el archivo al FormData
+        console.log(`Tipo de archivo: ${fileType}`);
+        console.log(`Nombre de archivo: ${fileName}`);
+   
         formData.append('video', {
           uri: videoUri,
-          name: `video.${fileExtension}`,
-          type: `video/${fileExtension === 'mov' ? 'quicktime' : fileExtension}`,
+          name: fileName,
+          type: fileType,
         });
         
-        // Agregar los datos adicionales
+
         formData.append('deviceId', deviceId);
         if (title) {
           formData.append('title', title);
         }
         
-        // Configurar la petición para subir el archivo
+  
         const config = {
           headers: {
             'Content-Type': 'multipart/form-data',
+            'Accept': 'application/json',
           },
           onUploadProgress: (progressEvent) => {
             const percentCompleted = Math.round(
               (progressEvent.loaded * 100) / progressEvent.total
             );
             
-            // Emitir evento de progreso
+            console.log(`Progreso de subida: ${percentCompleted}%`);
+
             if (this.onProgressCallback) {
               this.onProgressCallback(percentCompleted);
             }
           },
+
+          timeout: 60000 * 5, 
         };
         
-        // Realizar la petición
-        const response = await api.post('/videos/subir', formData, config);
+        console.log('Enviando solicitud al servidor...');
+        
+
+        const response = await api.post('/videos', formData, config);
+        console.log('Respuesta recibida:', response.data);
         return response.data;
       } catch (error) {
         console.error('Error al subir video:', error);
+        if (error.response) {
+     
+          console.error('Datos de respuesta:', error.response.data);
+          console.error('Estado HTTP:', error.response.status);
+          console.error('Cabeceras:', error.response.headers);
+        } else if (error.request) {
+
+          console.error('No se recibió respuesta del servidor:', error.request);
+        } else {
+          
+          console.error('Error al configurar la solicitud:', error.message);
+        }
         throw error;
       }
     },
     
-    // Eliminar un video
+
     eliminarVideo: async (id, deviceId) => {
       try {
         const response = await api.delete(`/videos/${id}`, {
@@ -100,16 +143,16 @@ const apiService = {
       }
     },
     
-    // Registrar callback para el progreso de subida
+
     onProgress: function(callback) {
       this.onProgressCallback = callback;
       return this;
     },
   },
   
-  // Servicios para likes
+ 
   likes: {
-    // Dar like a un video
+
     darLike: async (videoId, deviceId) => {
       try {
         const response = await api.post('/likes', {
@@ -122,8 +165,7 @@ const apiService = {
         throw error;
       }
     },
-    
-    // Quitar like a un video
+
     quitarLike: async (videoId, deviceId) => {
       try {
         const response = await api.delete('/likes', {
@@ -139,7 +181,7 @@ const apiService = {
       }
     },
     
-    // Verificar si un dispositivo ya dio like a un video
+  
     verificarLike: async (videoId, deviceId) => {
       try {
         const response = await api.get(`/likes/verificar/${videoId}?deviceId=${deviceId}`);
@@ -151,9 +193,9 @@ const apiService = {
     },
   },
   
-  // Servicios para comentarios
+
   comentarios: {
-    // Crear un nuevo comentario
+
     crearComentario: async (videoId, deviceId, text) => {
       try {
         const response = await api.post('/comentarios', {
@@ -168,7 +210,7 @@ const apiService = {
       }
     },
     
-    // Obtener comentarios de un video
+
     obtenerComentariosPorVideo: async (videoId, page = 1, limit = 20) => {
       try {
         const response = await api.get(`/comentarios/video/${videoId}?page=${page}&limit=${limit}`);
@@ -179,7 +221,7 @@ const apiService = {
       }
     },
     
-    // Eliminar un comentario
+
     eliminarComentario: async (id, deviceId) => {
       try {
         const response = await api.delete(`/comentarios/${id}`, {
